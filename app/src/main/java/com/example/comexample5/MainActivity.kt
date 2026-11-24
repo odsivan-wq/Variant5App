@@ -13,6 +13,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 enum class NewsCategory {
     TECHNOLOGY,
@@ -22,13 +29,11 @@ enum class NewsCategory {
     SPORTS
 }
 
-// Джерело новини
 data class NewsSource(
     val name: String,
     val country: String
 )
 
-// Модель новини
 data class NewsArticle(
     val id: Int,
     val title: String,
@@ -39,11 +44,113 @@ data class NewsArticle(
     val savedOffline: Boolean = false
 )
 
-// Sealed class для представлення результатів
 sealed class Result<out T> {
     data class Success<T>(val data: T) : Result<T>()
     data class Error(val message: String) : Result<Nothing>()
     object Loading : Result<Nothing>()
+}
+
+val sampleNews = listOf(
+    NewsArticle(
+        1,
+        "Нові технології штучного інтелекту",
+        "Компанії розробляють нові системи штучного інтелекту для автоматизації роботи.",
+        NewsCategory.TECHNOLOGY,
+        NewsSource("Tech News", "Україна"),
+        "23.11.2026",
+        true
+    ),
+    NewsArticle(
+        2,
+        "Розвиток світової економіки",
+        "Експерти аналізують зміни світової економіки та фінансових ринків.",
+        NewsCategory.BUSINESS,
+        NewsSource("Business Daily", "США"),
+        "22.11.2026"
+    ),
+    NewsArticle(
+        3,
+        "Нові відкриття в науці",
+        "Науковці представили результати досліджень у сфері сучасної медицини.",
+        NewsCategory.SCIENCE,
+        NewsSource("Science World", "Велика Британія"),
+        "21.11.2026",
+        true
+    ),
+    NewsArticle(
+        4,
+        "Результати спортивних змагань",
+        "Команди продемонстрували високий рівень підготовки під час змагань.",
+        NewsCategory.SPORTS,
+        NewsSource("Sport News", "Україна"),
+        "20.11.2026"
+    ),
+    NewsArticle(
+        5,
+        "Політичні події у світі",
+        "У різних країнах відбулися важливі політичні події.",
+        NewsCategory.POLITICS,
+        NewsSource("World News", "Німеччина"),
+        "19.11.2026"
+    ),
+    NewsArticle(
+        6,
+        "Розвиток мобільних застосунків",
+        "Розробники використовують сучасні інструменти для створення мобільних програм.",
+        NewsCategory.TECHNOLOGY,
+        NewsSource("Mobile Today", "Україна"),
+        "18.11.2026"
+    ),
+    NewsArticle(
+        7,
+        "Дослідження космосу",
+        "Вчені продовжують досліджувати планети та інші об'єкти Сонячної системи.",
+        NewsCategory.SCIENCE,
+        NewsSource("Space News", "США"),
+        "17.11.2026"
+    ),
+    NewsArticle(
+        8,
+        "Новини футбольного сезону",
+        "Футбольні клуби готуються до наступних матчів та змагань.",
+        NewsCategory.SPORTS,
+        NewsSource("Football News", "Іспанія"),
+        "16.11.2026"
+    )
+)
+
+data class ListUiState(
+    val news: List<NewsArticle> = emptyList(),
+    val searchText: String = "",
+    val isLoading: Boolean = false,
+    val selectedArticleId: Int? = null
+) {
+    val filteredNews: List<NewsArticle>
+        get() = news.filter {
+            it.title.contains(searchText, ignoreCase = true) ||
+                    it.description.contains(searchText, ignoreCase = true)
+        }
+}
+
+class ListViewModel : ViewModel() {
+
+    private val _uiState = MutableStateFlow(
+        ListUiState(news = sampleNews)
+    )
+
+    val uiState = _uiState.asStateFlow()
+
+    fun onSearchTextChanged(text: String) {
+        _uiState.update {
+            it.copy(searchText = text)
+        }
+    }
+
+    fun onArticleSelected(id: Int) {
+        _uiState.update {
+            it.copy(selectedArticleId = id)
+        }
+    }
 }
 
 class MainActivity : ComponentActivity() {
@@ -60,90 +167,11 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewsScreen() {
-
+fun NewsScreen(
+    newsViewModel: ListViewModel = viewModel()
+) {
+    val uiState by newsViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-
-    // Тестовий список новин
-    val newsItems = listOf(
-        NewsArticle(
-            1,
-            "Нові технології штучного інтелекту",
-            "Компанії розробляють нові системи штучного інтелекту для автоматизації роботи.",
-            NewsCategory.TECHNOLOGY,
-            NewsSource("Tech News", "Україна"),
-            "23.11.2026",
-            true
-        ),
-        NewsArticle(
-            2,
-            "Розвиток світової економіки",
-            "Експерти аналізують зміни світової економіки та фінансових ринків.",
-            NewsCategory.BUSINESS,
-            NewsSource("Business Daily", "США"),
-            "22.11.2026"
-        ),
-        NewsArticle(
-            3,
-            "Нові відкриття в науці",
-            "Науковці представили результати досліджень у сфері сучасної медицини.",
-            NewsCategory.SCIENCE,
-            NewsSource("Science World", "Велика Британія"),
-            "21.11.2026",
-            true
-        ),
-        NewsArticle(
-            4,
-            "Результати спортивних змагань",
-            "Команди продемонстрували високий рівень підготовки під час змагань.",
-            NewsCategory.SPORTS,
-            NewsSource("Sport News", "Україна"),
-            "20.11.2026"
-        ),
-        NewsArticle(
-            5,
-            "Політичні події у світі",
-            "У різних країнах відбулися важливі політичні події.",
-            NewsCategory.POLITICS,
-            NewsSource("World News", "Німеччина"),
-            "19.11.2026"
-        ),
-        NewsArticle(
-            6,
-            "Розвиток мобільних застосунків",
-            "Розробники використовують сучасні інструменти для створення мобільних програм.",
-            NewsCategory.TECHNOLOGY,
-            NewsSource("Mobile Today", "Україна"),
-            "18.11.2026"
-        ),
-        NewsArticle(
-            7,
-            "Дослідження космосу",
-            "Вчені продовжують досліджувати планети та інші об'єкти Сонячної системи.",
-            NewsCategory.SCIENCE,
-            NewsSource("Space News", "США"),
-            "17.11.2026"
-        ),
-        NewsArticle(
-            8,
-            "Новини футбольного сезону",
-            "Футбольні клуби готуються до наступних матчів та змагань.",
-            NewsCategory.SPORTS,
-            NewsSource("Football News", "Іспанія"),
-            "16.11.2026"
-        )
-    )
-
-    // Стан поля пошуку
-    var searchText by remember {
-        mutableStateOf("")
-    }
-
-    // Фільтрація новин
-    val filteredNews = newsItems.filter {
-        it.title.contains(searchText, ignoreCase = true) ||
-                it.description.contains(searchText, ignoreCase = true)
-    }
 
     Scaffold(
         topBar = {
@@ -162,11 +190,10 @@ fun NewsScreen() {
                 .padding(16.dp)
         ) {
 
-            // Поле пошуку
             OutlinedTextField(
-                value = searchText,
+                value = uiState.searchText,
                 onValueChange = {
-                    searchText = it
+                    newsViewModel.onSearchTextChanged(it)
                 },
                 label = {
                     Text("Пошук новин")
@@ -181,26 +208,27 @@ fun NewsScreen() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Знайдено новин: ${filteredNews.size}",
+                text = "Знайдено новин: ${uiState.filteredNews.size}",
                 style = MaterialTheme.typography.titleMedium
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Список новин
-            if (filteredNews.isEmpty()) {
+            if (uiState.filteredNews.isEmpty()) {
                 Text("Новин не знайдено")
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(filteredNews) { article ->
+                    items(uiState.filteredNews) { article ->
 
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
+                                    newsViewModel.onArticleSelected(article.id)
+
                                     Toast.makeText(
                                         context,
                                         "Ви обрали: ${article.title}",
