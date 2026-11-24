@@ -1,4 +1,3 @@
-
 package com.example.comexample5.presentation.ui
 
 import com.example.comexample5.domain.model.NewsArticle

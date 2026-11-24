@@ -1,4 +1,3 @@
-
 package com.example.comexample5.presentation.ui
 
 import androidx.lifecycle.ViewModel
@@ -15,9 +14,8 @@ class ListViewModel(
         GetNewsUseCase(NewsRepositoryImpl())
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(
-        ListUiState(isLoading = true)
-    )
+    private val _uiState =
+        MutableStateFlow(ListUiState(isLoading = true))
 
     val uiState = _uiState.asStateFlow()
 
@@ -25,9 +23,15 @@ class ListViewModel(
         loadNews()
     }
 
-    // Завантаження новин через UseCase
     private fun loadNews() {
         viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null
+                )
+            }
+
             try {
                 val news = getNewsUseCase()
 
@@ -38,25 +42,26 @@ class ListViewModel(
                         errorMessage = null
                     )
                 }
+
             } catch (e: Exception) {
+
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = e.message ?: "Не вдалося завантажити новини"
+                        errorMessage = e.message
+                            ?: "Помилка завантаження новин"
                     )
                 }
             }
         }
     }
 
-    // Оновлення тексту пошуку
     fun onSearchTextChanged(text: String) {
         _uiState.update {
             it.copy(searchText = text)
         }
     }
 
-    // Вибір новини
     fun onArticleSelected(id: Int) {
         _uiState.update {
             it.copy(selectedArticleId = id)
